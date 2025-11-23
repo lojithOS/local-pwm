@@ -1,21 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/file.h>
+#include <string.h>
+#include "sqlite3.h"
 
 #define SRC_TARGET_FILE "/var/local-pwm/target"
 
 char* get_target_file() {
-	FILE *file = fopen(SRC_TARGET_FILE, "r");
-	if (file == NULL) {
-		perror("Target file missing.\nIt's created when assigning a database file.");
-		return;
-	}
-	char buffer[256];
-	if (fgets(buffer, sizeof(buffer), file) == NULL) {
-		fclose(file);
-		return NULL;
-	}
-	fclose(file);
+    FILE *file = fopen(SRC_TARGET_FILE, "r");
+    if (file == NULL) {
+        perror("fopen");
+        return NULL;
+    }
+    char buffer[256];
+    if (fgets(buffer, sizeof(buffer), file) == NULL) {
+        fclose(file);
+        return NULL;
+    }
+    fclose(file);
 
     // Remove newline if present
     size_t len = strlen(buffer);
@@ -31,14 +32,26 @@ char* get_target_file() {
     }
     return result;
 }
-void get_database() {
-	char* db_path = get_target_file();
-	if (db_path == NULL) {
-		return;
-	}
-	sqlite3_open(db_path);
-	free(db_path);
+
+sqlite3* get_database() {
+    char* db_path = get_target_file();
+    if (db_path == NULL) {
+        return NULL;
+    }
+
+    sqlite3 *db;
+    int rc = sqlite3_open(db_path, &db);
+    free(db_path); // always free, even if open fails
+
+    if (rc) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return NULL;
+    }
+
+    return db;
 }
+
 void get_pw() {
 
 }
